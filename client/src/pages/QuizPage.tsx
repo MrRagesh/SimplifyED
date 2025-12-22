@@ -49,19 +49,44 @@ export default function QuizPage() {
   }
 
   if (submitted && results) {
+    const isExcellent = results.percentage >= 80;
+    const bgColor = isExcellent ? "bg-green-50 dark:bg-green-950/30" : "bg-yellow-50 dark:bg-yellow-950/30";
+    const borderColor = isExcellent ? "border-green-200 dark:border-green-800" : "border-yellow-200 dark:border-yellow-800";
+    
     return (
       <Layout>
-        <div className="max-w-2xl mx-auto space-y-8">
+        <div className={`max-w-2xl mx-auto space-y-8 p-6 rounded-3xl ${bgColor} border ${borderColor}`}>
           {/* Results Header */}
           <div className="text-center space-y-4">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-accent/20 rounded-full mb-4">
-              <Trophy className="w-10 h-10 text-accent" />
+            <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${isExcellent ? 'bg-green-200 dark:bg-green-900' : 'bg-yellow-200 dark:bg-yellow-900'}`}>
+              <Trophy className={`w-10 h-10 ${isExcellent ? 'text-green-600' : 'text-yellow-600'}`} />
             </div>
             <h1 className="text-4xl font-bold">Quiz Complete!</h1>
-            <div className="text-6xl font-bold text-primary">{results.percentage}%</div>
+            <div className={`text-6xl font-bold ${isExcellent ? 'text-green-600' : 'text-yellow-600'}`}>
+              {results.percentage}%
+            </div>
             <p className="text-lg text-muted-foreground">
-              You scored {results.score} out of {results.total}
+              You scored {results.score} out of {results.total} questions
             </p>
+          </div>
+
+          {/* Congratulations Message */}
+          <div className={`p-6 rounded-2xl ${isExcellent ? 'bg-green-100 dark:bg-green-900/50 text-green-900 dark:text-green-100' : 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-900 dark:text-yellow-100'}`}>
+            <p className="text-lg font-semibold text-center">
+              {results.congratulations}
+            </p>
+          </div>
+
+          {/* Topic Info */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="p-4 bg-background dark:bg-card rounded-xl">
+              <p className="text-sm text-muted-foreground">Topic</p>
+              <p className="text-xl font-bold">{results.topic}</p>
+            </div>
+            <div className="p-4 bg-background dark:bg-card rounded-xl">
+              <p className="text-sm text-muted-foreground">Difficulty</p>
+              <p className="text-xl font-bold">{results.difficulty}</p>
+            </div>
           </div>
 
           {/* Results Detail */}

@@ -95,8 +95,8 @@ export async function registerRoutes(
 
       // Generate quiz questions using AI
       const prompt = `Create a ${difficulty} level quiz about "${topic}". 
-      Generate 5 multiple choice questions. 
-      Return as JSON array with this format:
+      Generate exactly 5 multiple choice questions. 
+      Return ONLY a valid JSON array, no markdown, no extra text:
       [
         {
           "question": "Question text?",
@@ -104,7 +104,7 @@ export async function registerRoutes(
           "correctAnswer": "option1"
         }
       ]
-      Only return the JSON array, no other text.`;
+      Ensure each question has exactly 4 options. The correctAnswer must be exactly one of the options.`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-5.1",
@@ -112,8 +112,25 @@ export async function registerRoutes(
         max_completion_tokens: 2048,
       });
 
-      const content = response.choices[0]?.message?.content || "[]";
-      const questionsData = JSON.parse(content);
+      let content = response.choices[0]?.message?.content || "[]";
+      
+      // Clean up response if it has markdown code blocks
+      if (content.includes("```json")) {
+        content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      } else if (content.includes("```")) {
+        content = content.replace(/```\n?/g, "").trim();
+      }
+
+      let questionsData = JSON.parse(content);
+      
+      // Ensure it's an array
+      if (!Array.isArray(questionsData)) {
+        questionsData = [];
+      }
+
+      if (questionsData.length === 0) {
+        return res.status(500).json({ error: "Failed to generate valid quiz questions" });
+      }
 
       // Save quiz to database
       const [quiz] = await db
@@ -121,31 +138,27 @@ export async function registerRoutes(
         .values({ topic, difficulty })
         .returning();
 
-      // Save questions
+      // Save questions with validation
+      const savedQuestions = [];
       for (const q of questionsData) {
-        await db.insert(quizQuestions).values({
-          quizId: quiz.id,
-          question: q.question,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-        });
+        if (q.question && Array.isArray(q.options) && q.correctAnswer) {
+          const [savedQ] = await db
+            .insert(quizQuestions)
+            .values({
+              quizId: quiz.id,
+              question: q.question,
+              options: q.options,
+              correctAnswer: q.correctAnswer,
+            })
+            .returning();
+          savedQuestions.push(savedQ);
+        }
       }
 
-      // Fetch the complete quiz with questions
-      const completeQuiz = await db
-        .select()
-        .from(quizzes)
-        .where(eq(quizzes.id, quiz.id));
-
-      const questions = await db
-        .select()
-        .from(quizQuestions)
-        .where(eq(quizQuestions.quizId, quiz.id));
-
-      res.status(201).json({ ...completeQuiz[0], questions });
+      res.status(201).json({ ...quiz, questions: savedQuestions });
     } catch (err) {
       console.error("Quiz generation error:", err);
-      res.status(500).json({ error: "Failed to generate quiz" });
+      res.status(500).json({ error: "Failed to generate quiz. Please try again." });
     }
   });
 
@@ -177,6 +190,13 @@ export async function registerRoutes(
       const id = parseInt(req.params.id);
       const { answers } = req.body; // answers: { [questionId]: userAnswer }
 
+      // Fetch quiz details for congratulations message
+      const [quizData] = await db.select().from(quizzes).where(eq(quizzes.id, id));
+      
+      if (!quizData) {
+        return res.status(404).json({ error: "Quiz not found" });
+      }
+
       const questions = await db
         .select()
         .from(quizQuestions)
@@ -205,16 +225,35 @@ export async function registerRoutes(
         });
       }
 
+      const percentage = Math.round((score / questions.length) * 100);
+
       // Update quiz score
       await db
         .update(quizzes)
         .set({ score })
         .where(eq(quizzes.id, id));
 
+      // Generate personalized congratulations message
+      let congratulations = "";
+      if (percentage === 100) {
+        congratulations = `🎉 Perfect Score! You've mastered "${quizData.topic}" at ${quizData.difficulty} level! Outstanding work!`;
+      } else if (percentage >= 80) {
+        congratulations = `🌟 Excellent! You scored ${percentage}% on "${quizData.topic}". You have a strong grasp of this topic!`;
+      } else if (percentage >= 60) {
+        congratulations = `👍 Good job! You scored ${percentage}% on "${quizData.topic}". Review the incorrect answers and try again!`;
+      } else if (percentage >= 40) {
+        congratulations = `💪 Keep practicing! You scored ${percentage}% on "${quizData.topic}". Review the concepts and attempt again!`;
+      } else {
+        congratulations = `📚 Don't worry! You scored ${percentage}% on "${quizData.topic}". Let's learn more about this topic!`;
+      }
+
       res.json({
         score,
         total: questions.length,
-        percentage: Math.round((score / questions.length) * 100),
+        percentage,
+        congratulations,
+        topic: quizData.topic,
+        difficulty: quizData.difficulty,
         results,
       });
     } catch (err) {

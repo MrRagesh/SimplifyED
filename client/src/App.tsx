@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import ChatPage from "@/pages/ChatPage";
+import QuizPage from "@/pages/QuizPage";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
@@ -50,6 +51,9 @@ function Router() {
       </Route>
       <Route path="/chat/:id">
         {(params) => <ProtectedRoute component={ChatPage} params={params} />}
+      </Route>
+      <Route path="/quiz/:id">
+        {(params) => <ProtectedRoute component={QuizPage} params={params} />}
       </Route>
 
       <Route component={NotFound} />

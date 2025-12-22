@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
-import { ArrowLeft, Send, Sparkles, User, GraduationCap, StopCircle } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, User, GraduationCap, StopCircle, BookOpen } from "lucide-react";
+import { QuizModal } from "@/components/QuizModal";
 import { format } from "date-fns";
 
 export default function ChatPage() {
@@ -16,6 +17,7 @@ export default function ChatPage() {
   const conversationId = parseInt(params?.id || "0");
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
+  const [quizModalOpen, setQuizModalOpen] = useState(false);
   
   const { data: conversation, isLoading } = useConversation(conversationId);
   
@@ -25,6 +27,8 @@ export default function ChatPage() {
       // Optional: focus input or analytics
     }
   });
+
+  const topicFromTitle = conversation?.title?.replace("Explain: ", "") || "";
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -85,6 +89,15 @@ export default function ChatPage() {
               Started {format(new Date(conversation.createdAt!), "MMM d, yyyy")}
             </p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setQuizModalOpen(true)}
+            className="rounded-lg flex items-center gap-2 hidden md:flex"
+          >
+            <BookOpen className="w-4 h-4" />
+            Test Your Knowledge
+          </Button>
           <div className="bg-primary/10 px-3 py-1 rounded-full text-xs font-bold text-primary flex items-center gap-1">
             <Sparkles className="w-3 h-3" />
             AI Tutor
@@ -191,6 +204,13 @@ export default function ChatPage() {
           </p>
         </div>
       </div>
+
+      {/* Quiz Modal */}
+      <QuizModal
+        open={quizModalOpen}
+        onOpenChange={setQuizModalOpen}
+        topic={topicFromTitle}
+      />
     </Layout>
   );
 }

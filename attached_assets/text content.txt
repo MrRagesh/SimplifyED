@@ -220,3 +220,62 @@ Optional: Deploy using Vercel/Netlify and include live URL
 
 ⚠️ Note: Always prioritize judges’ perception of impact, simplicity of explanation, and visual clarity over complex tech jargon.
 Build smart, not bulky. Aim for clarity, polish, and relevance.
+
+
+
+===============================
+
+
+Option 2: Homebrew (If you prefer the terminal)
+If you have Homebrew installed, you can run:
+
+-> brew install postgresql@15
+-> brew services start postgresql@15
+
+
+Step 2: Create the Database
+Once PostgreSQL is running (via the App or Homebrew), you need to create the database for your project.
+
+Open your Terminal.
+Run the following command to create a database named doc_helper:
+
+-> createdb doc_helper
+
+
+Step 3: Update your 
+.env
+ file
+Now, update your 
+.env
+ file in the project with the connection details.
+
+If using Postgres.app: By default, it uses your Mac username as the database user and no password.
+
+Update your 
+.env
+ file to this:
+
+env
+# Replace 'ragesh' with your actual Mac username if different
+-> DATABASE_URL=postgresql://ragesh@localhost:5432/doc_helper
+
+
+If using Homebrew: It typically uses the postgres user.
+
+env
+-> DATABASE_URL=postgresql://postgres@localhost:5432/doc_helper
+Step 4: Verify
+Try running the database push command again to confirm everything connects:
+
+zsh
+-> npm run db:push
+
+
+
+Gemini API Key
+AIzaSyAD80pyBB3kDC-7Ll0SsswTzZcgTthkGfw
+OpenAI
+WjpQcdSX8sLbimm3o2dRQSRt
+
+
+

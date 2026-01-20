@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Loader2, MessageSquare, Trash2, ArrowRight, Clock } from "lucide-react";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const { data: conversations, isLoading } = useConversations();
   const deleteMutation = useDeleteConversation();
+  const { toast } = useToast();
 
   if (isLoading) {
     return (
@@ -35,41 +37,62 @@ export default function Dashboard() {
         {conversations && conversations.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {conversations.map((conv) => (
-              <Card 
-                key={conv.id} 
+              <Card
+                key={conv.id}
                 className="group relative overflow-hidden border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-card"
               >
-                <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (confirm("Delete this session?")) deleteMutation.mutate(conv.id);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-
                 <Link href={`/chat/${conv.id}`}>
                   <div className="p-6 h-full flex flex-col cursor-pointer">
                     <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
                       <MessageSquare className="w-6 h-6" />
                     </div>
-                    
+
                     <h3 className="font-display font-bold text-xl mb-2 line-clamp-1 text-foreground group-hover:text-primary transition-colors">
                       {conv.title}
                     </h3>
-                    
+
                     <div className="mt-auto pt-4 flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="w-4 h-4" />
                       {conv.createdAt ? formatDistanceToNow(new Date(conv.createdAt), { addSuffix: true }) : 'Just now'}
                     </div>
                   </div>
                 </Link>
+
+                <div className="absolute top-2 right-2 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full bg-background/50 backdrop-blur-sm shadow-sm"
+                    disabled={deleteMutation.isPending}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (confirm("Delete this session?")) {
+                        deleteMutation.mutate(conv.id, {
+                          onSuccess: () => {
+                            toast({
+                              title: "Deleted",
+                              description: "Session removed successfully",
+                            });
+                          },
+                          onError: () => {
+                            toast({
+                              title: "Error",
+                              description: "Failed to delete session",
+                              variant: "destructive",
+                            });
+                          },
+                        });
+                      }
+                    }}
+                  >
+                    {deleteMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
               </Card>
             ))}
           </div>

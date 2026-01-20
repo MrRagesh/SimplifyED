@@ -1,11 +1,6 @@
 import type { Express, Request, Response } from "express";
-import OpenAI from "openai";
 import { chatStorage } from "./storage";
-
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+import { generateHybridResponse } from "../../lib/ai_service";
 
 export function registerChatRoutes(app: Express): void {
   // Get all conversations
@@ -81,22 +76,11 @@ export function registerChatRoutes(app: Express): void {
       res.setHeader("Connection", "keep-alive");
 
       // Stream response from OpenAI
-      const stream = await openai.chat.completions.create({
-        model: "gpt-5.1",
-        messages: chatMessages,
-        stream: true,
-        max_completion_tokens: 2048,
-      });
+      // Use Hybrid Response (non-streaming internally, but we send as SSE)
+      const fullResponse = await generateHybridResponse(chatMessages);
 
-      let fullResponse = "";
-
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || "";
-        if (content) {
-          fullResponse += content;
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
-        }
-      }
+      // Send the full response as one chunk (or split it if we wanted to fake streaming)
+      res.write(`data: ${JSON.stringify({ content: fullResponse })}\n\n`);
 
       // Save assistant message
       await chatStorage.createMessage(conversationId, "assistant", fullResponse);

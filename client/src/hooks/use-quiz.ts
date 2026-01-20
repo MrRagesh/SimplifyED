@@ -37,11 +37,9 @@ interface QuizResult {
 
 export function useCreateQuiz() {
   return useMutation({
-    mutationFn: async (data: { topic: string; difficulty: string }) => {
-      const response = await apiRequest("/api/quizzes", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+    mutationFn: async (data: { topic: string; difficulty: string; context?: string }) => {
+      const res = await apiRequest("POST", "/api/quizzes", data);
+      const response = await res.json();
       if (!response || !response.id) {
         throw new Error("Failed to create quiz - invalid response");
       }
@@ -57,7 +55,8 @@ export function useQuiz(quizId: number) {
   return useQuery<Quiz>({
     queryKey: ["/api/quizzes", quizId],
     queryFn: async () => {
-      const response = await apiRequest(`/api/quizzes/${quizId}`);
+      const res = await apiRequest("GET", `/api/quizzes/${quizId}`);
+      const response = await res.json();
       if (!response) {
         throw new Error("Failed to fetch quiz");
       }
@@ -70,10 +69,8 @@ export function useQuiz(quizId: number) {
 export function useSubmitQuiz() {
   return useMutation({
     mutationFn: async (data: { quizId: number; answers: Record<number, string> }) => {
-      const response = await apiRequest(`/api/quizzes/${data.quizId}/submit`, {
-        method: "POST",
-        body: JSON.stringify({ answers: data.answers }),
-      });
+      const res = await apiRequest("POST", `/api/quizzes/${data.quizId}/submit`, { answers: data.answers });
+      const response = await res.json();
       if (!response) {
         throw new Error("Failed to submit quiz");
       }

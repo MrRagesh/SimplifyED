@@ -6,15 +6,12 @@ import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import OpenAI from "openai";
+import { generateHybridQuiz } from "./lib/ai_service";
 import { db } from "./db";
 import { quizzes, quizQuestions } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// OpenAI import removed as it is handled in ai_service
 
 const SIMPLIFY_SYSTEM_PROMPT = `
 You are SimplifyED, an AI-powered adaptive concept explainer.
@@ -59,7 +56,7 @@ export async function registerRoutes(
   app.post(api.simplify.start.path, async (req, res) => {
     try {
       const { topic, level } = api.simplify.start.input.parse(req.body);
-      
+
       const title = topic ? `Explain: ${topic}` : "New Session";
       const conversation = await chatStorage.createConversation(title);
 
@@ -74,7 +71,7 @@ export async function registerRoutes(
 
       res.status(201).json({ conversationId: conversation.id });
     } catch (err) {
-       if (err instanceof z.ZodError) {
+      if (err instanceof z.ZodError) {
         return res.status(400).json({
           message: err.errors[0].message,
           field: err.errors[0].path.join('.'),
@@ -87,15 +84,25 @@ export async function registerRoutes(
   // Quiz Endpoints
   app.post("/api/quizzes", async (req, res) => {
     try {
-      const { topic, difficulty } = req.body;
-      
-      if (!topic || !difficulty) {
-        return res.status(400).json({ error: "Topic and difficulty required" });
+      const { topic, difficulty, context } = req.body;
+
+      if (!topic && !context) {
+        return res.status(400).json({ error: "Topic or context required" });
       }
 
       // Generate quiz questions using AI
-      const prompt = `Create a ${difficulty} level quiz about "${topic}". 
-      Generate exactly 5 multiple choice questions. 
+      let prompt = "";
+      if (context) {
+        prompt = `Create a ${difficulty} level quiz based ON THE FOLLOWING CONTENT:
+        "${context}"
+        
+        Generate exactly 5 multiple choice questions that test understanding of THIS specific content.`;
+      } else {
+        prompt = `Create a ${difficulty} level quiz about "${topic}". 
+        Generate exactly 5 multiple choice questions.`;
+      }
+
+      prompt += `
       Return ONLY a valid JSON array, no markdown, no extra text:
       [
         {
@@ -106,14 +113,10 @@ export async function registerRoutes(
       ]
       Ensure each question has exactly 4 options. The correctAnswer must be exactly one of the options.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.1",
-        messages: [{ role: "user", content: prompt }],
-        max_completion_tokens: 2048,
-      });
+      const responseContent = await generateHybridQuiz(prompt);
 
-      let content = response.choices[0]?.message?.content || "[]";
-      
+      let content = responseContent || "[]";
+
       // Clean up response if it has markdown code blocks
       if (content.includes("```json")) {
         content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -122,7 +125,7 @@ export async function registerRoutes(
       }
 
       let questionsData = JSON.parse(content);
-      
+
       // Ensure it's an array
       if (!Array.isArray(questionsData)) {
         questionsData = [];
@@ -167,7 +170,7 @@ export async function registerRoutes(
     try {
       const id = parseInt(req.params.id);
       const quiz = await db.select().from(quizzes).where(eq(quizzes.id, id));
-      
+
       if (!quiz.length) {
         return res.status(404).json({ error: "Quiz not found" });
       }
@@ -192,7 +195,7 @@ export async function registerRoutes(
 
       // Fetch quiz details for congratulations message
       const [quizData] = await db.select().from(quizzes).where(eq(quizzes.id, id));
-      
+
       if (!quizData) {
         return res.status(404).json({ error: "Quiz not found" });
       }

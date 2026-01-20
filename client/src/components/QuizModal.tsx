@@ -11,18 +11,19 @@ interface QuizModalProps {
   onOpenChange: (open: boolean) => void;
   onQuizCreated?: (quizId: number) => void;
   topic?: string;
+  context?: string;
 }
 
-export function QuizModal({ open, onOpenChange, onQuizCreated, topic: defaultTopic }: QuizModalProps) {
+export function QuizModal({ open, onOpenChange, onQuizCreated, topic: defaultTopic, context }: QuizModalProps) {
   const [topic, setTopic] = useState(defaultTopic || "");
   const [difficulty, setDifficulty] = useState("Intermediate");
   const createMutation = useCreateQuiz();
 
   const handleCreate = async () => {
-    if (!topic || !difficulty) return;
-    
+    if (!topic && !context) return;
+
     createMutation.mutate(
-      { topic, difficulty },
+      { topic, difficulty, context },
       {
         onSuccess: (quiz) => {
           onOpenChange(false);

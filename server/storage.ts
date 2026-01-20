@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser } from "@shared/schema";
+import { users, type User, type UpsertUser } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { authStorage } from "./replit_integrations/auth/storage";
@@ -11,13 +11,13 @@ export interface IStorage {
   // Add custom storage methods here if needed
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: UpsertUser): Promise<User>;
 }
 
 export class DatabaseStorage implements IStorage {
   // We can delegate to authStorage for user related things or implement our own
   // Since we are using Replit Auth, we mainly rely on authStorage.upsertUser
-  
+
   async getUser(id: string): Promise<User | undefined> {
     return authStorage.getUser(id);
   }
@@ -27,7 +27,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createUser(insertUser: UpsertUser): Promise<User> {
     // This is mostly for compatibility if we were using local auth
     // With Replit Auth, users are created via upsertUser in auth/storage.ts
     // We'll just throw or call upsertUser

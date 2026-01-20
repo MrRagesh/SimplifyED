@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useRoute, Link } from "wouter";
-import { useConversation } from "@/hooks/use-chat";
+import { useRoute, Link, useLocation } from "wouter";
+import { useConversation, useDeleteConversation } from "@/hooks/use-chat";
 import { useChatStream } from "@/hooks/use-chat-stream";
 import { Layout } from "@/components/Layout";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
-import { ArrowLeft, Send, Sparkles, User, GraduationCap, StopCircle, BookOpen } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, User, GraduationCap, StopCircle, BookOpen, Copy, Edit2, Image as ImageIcon, Check, Loader2, Trash2 } from "lucide-react";
 import { QuizModal } from "@/components/QuizModal";
 import { format } from "date-fns";
+import { useGenerateImage } from "@/hooks/use-image-gen";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ChatPage() {
   const [, params] = useRoute("/chat/:id");
@@ -18,17 +20,25 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
   const [quizModalOpen, setQuizModalOpen] = useState(false);
-  
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [messageImages, setMessageImages] = useState<Record<number, string>>({});
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const deleteMutation = useDeleteConversation();
+
   const { data: conversation, isLoading } = useConversation(conversationId);
-  
+  const imageGen = useGenerateImage();
+
   const { sendMessage, isStreaming, streamedContent, abort } = useChatStream({
     conversationId,
     onComplete: () => {
-      // Optional: focus input or analytics
     }
   });
 
   const topicFromTitle = conversation?.title?.replace("Explain: ", "") || "";
+  const lastAssistantMessage = conversation?.messages
+    ?.filter(m => m.role === "assistant")
+    .slice(-1)[0]?.content;
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -40,7 +50,7 @@ export default function ChatPage() {
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isStreaming) return;
-    
+
     sendMessage(input);
     setInput("");
   };
@@ -49,6 +59,41 @@ export default function ChatPage() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
+    }
+  };
+
+  const copyToClipboard = async (text: string, msgId: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(msgId);
+      setTimeout(() => setCopiedId(null), 2000);
+      toast({
+        title: "Copied!",
+        description: "Message copied to clipboard.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to copy message.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleVisualize = async (content: string, msgId: number) => {
+    try {
+      toast({
+        title: "Generating Visual...",
+        description: "Creating a relevant image for this explanation.",
+      });
+      const imageUrl = await imageGen.mutateAsync(content);
+      setMessageImages(prev => ({ ...prev, [msgId]: imageUrl }));
+    } catch (err) {
+      toast({
+        title: "Generation Failed",
+        description: "Could not generate an image at this time.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -102,6 +147,39 @@ export default function ChatPage() {
             <Sparkles className="w-3 h-3" />
             AI Tutor
           </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
+            onClick={() => {
+              if (confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) {
+                deleteMutation.mutate(conversationId, {
+                  onSuccess: () => {
+                    toast({
+                      title: "Success",
+                      description: "Conversation deleted successfully.",
+                    });
+                    setLocation("/");
+                  },
+                  onError: () => {
+                    toast({
+                      title: "Error",
+                      description: "Failed to delete conversation.",
+                      variant: "destructive",
+                    });
+                  }
+                });
+              }
+            }}
+            disabled={deleteMutation.isPending}
+          >
+            {deleteMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Trash2 className="w-5 h-5" />
+            )}
+          </Button>
         </div>
 
         {/* Messages Area */}
@@ -118,22 +196,66 @@ export default function ChatPage() {
                 `}>
                   {msg.role === "user" ? <User className="w-5 h-5" /> : <GraduationCap className="w-6 h-6" />}
                 </div>
-                
+
                 <div className={`
-                  flex flex-col max-w-[85%] md:max-w-[75%]
+                  flex flex-col max-w-[85%] md:max-w-[75%] group
                   ${msg.role === "user" ? "items-end" : "items-start"}
                 `}>
                   <div className={`
-                    px-6 py-4 rounded-2xl shadow-sm text-base md:text-lg leading-relaxed
-                    ${msg.role === "user" 
-                      ? "bg-accent text-accent-foreground rounded-tr-sm" 
+                    relative px-6 py-4 rounded-2xl shadow-sm text-base md:text-lg leading-relaxed
+                    ${msg.role === "user"
+                      ? "bg-accent text-accent-foreground rounded-tr-sm"
                       : "bg-white dark:bg-card border border-border rounded-tl-sm"}
                   `}>
                     {msg.role === "user" ? (
                       msg.content
                     ) : (
-                      <MarkdownRenderer content={msg.content} />
+                      <div className="flex flex-col gap-4">
+                        <MarkdownRenderer content={msg.content} />
+                        {messageImages[msg.id] && (
+                          <div className="mt-2 rounded-xl overflow-hidden border border-border shadow-md">
+                            <img src={messageImages[msg.id]} alt="AI Generated Visualization" className="w-full h-auto object-cover" />
+                          </div>
+                        )}
+                      </div>
                     )}
+
+                    {/* Action Buttons */}
+                    <div className={`
+                      absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity
+                      ${msg.role === "user" ? "-left-12 right-auto" : "-right-24 top-0"}
+                    `}>
+                      {msg.role === "user" ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full bg-background/80 backdrop-blur"
+                          onClick={() => setInput(msg.content)}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full bg-background/80 backdrop-blur"
+                            onClick={() => copyToClipboard(msg.content, msg.id)}
+                          >
+                            {copiedId === msg.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full bg-background/80 backdrop-blur"
+                            disabled={imageGen.isPending}
+                            onClick={() => handleVisualize(msg.content, msg.id)}
+                          >
+                            {imageGen.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <span className="text-xs text-muted-foreground mt-2 px-1 opacity-70">
                     {format(new Date(msg.createdAt!), "h:mm a")}
@@ -151,7 +273,7 @@ export default function ChatPage() {
                 <div className="flex flex-col max-w-[85%] md:max-w-[75%] items-start">
                   <div className="px-6 py-4 rounded-2xl rounded-tl-sm bg-white dark:bg-card border border-border shadow-sm w-full">
                     {streamedContent ? (
-                       <MarkdownRenderer content={streamedContent} />
+                      <MarkdownRenderer content={streamedContent} animate={true} />
                     ) : (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <span className="animate-pulse">Thinking...</span>
@@ -161,7 +283,7 @@ export default function ChatPage() {
                 </div>
               </div>
             )}
-            
+
             <div ref={scrollRef} />
           </div>
         </ScrollArea>
@@ -179,17 +301,17 @@ export default function ChatPage() {
             />
             <div className="pb-2 pr-2">
               {isStreaming ? (
-                <Button 
-                  size="icon" 
-                  variant="destructive" 
+                <Button
+                  size="icon"
+                  variant="destructive"
                   className="rounded-xl h-10 w-10 shrink-0"
                   onClick={abort}
                 >
                   <StopCircle className="w-5 h-5" />
                 </Button>
               ) : (
-                <Button 
-                  size="icon" 
+                <Button
+                  size="icon"
                   className="rounded-xl h-10 w-10 shrink-0 bg-primary hover:bg-primary/90 shadow-md transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                   onClick={() => handleSubmit()}
                   disabled={!input.trim()}
@@ -210,6 +332,7 @@ export default function ChatPage() {
         open={quizModalOpen}
         onOpenChange={setQuizModalOpen}
         topic={topicFromTitle}
+        context={lastAssistantMessage}
       />
     </Layout>
   );

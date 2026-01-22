@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, Brain, Zap, MessageSquare, ArrowRight } from "lucide-react";
 import { Redirect } from "wouter";
+import { color } from "framer-motion";
 
 export default function Landing() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -16,12 +17,12 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background font-sans selection:bg-accent/30">
       {/* Header */}
-      <header className="container mx-auto px-6 py-6 flex justify-between items-center">
+      <header className="container mx-auto px-4 md:px-6 py-4 md:py-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <div className="bg-primary p-2 rounded-xl shadow-lg shadow-primary/20">
             <GraduationCap className="w-6 h-6 text-white" />
           </div>
-          <span className="font-display font-bold text-2xl tracking-tight">SimplifyED</span>
+          <span className="font-display font-bold text-xl md:text-2xl tracking-tight">SimplifyED</span>
         </div>
         <Button onClick={handleLogin} variant="outline" className="rounded-xl border-2 font-semibold">
           Sign In
@@ -29,28 +30,28 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-6 py-16 md:py-24 flex flex-col items-center text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 text-accent-foreground font-semibold text-sm mb-8 animate-in delay-100">
+      <section className="container mx-auto px-4 py-12 md:py-24 flex flex-col items-center text-center">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 text-accent-foreground font-semibold text-sm mb-6 md:mb-8 animate-in delay-100">
           <Zap className="w-4 h-4 fill-current" />
           <span>AI-Powered Learning Assistant</span>
         </div>
-        
-        <h1 className="font-display text-5xl md:text-7xl font-extrabold tracking-tight mb-6 max-w-4xl text-foreground animate-in delay-200">
+
+        <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-4 md:mb-6 max-w-4xl text-foreground animate-in delay-200 leading-tight">
           Master any topic, <br className="hidden md:block" />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">
             simply explained.
           </span>
         </h1>
-        
-        <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mb-10 leading-relaxed animate-in delay-300">
+
+        <p className="text-lg md:text-2xl text-muted-foreground max-w-2xl mb-8 md:mb-10 leading-relaxed animate-in delay-300 px-2">
           Your personal AI tutor that adapts to your level. From "Explain like I'm 5" to advanced academic breakdowns.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center animate-in delay-300">
-          <Button 
-            size="lg" 
+        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center animate-in delay-300 px-4">
+          <Button
+            size="lg"
             onClick={handleLogin}
-            className="h-14 px-8 rounded-2xl text-lg bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 transition-transform hover:-translate-y-1"
+            className="h-12 md:h-14 px-8 rounded-2xl text-lg bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 transition-transform hover:-translate-y-1 w-full sm:w-auto"
           >
             Start Learning Free
             <ArrowRight className="ml-2 w-5 h-5" />
@@ -88,7 +89,7 @@ export default function Landing() {
           ))}
         </div>
       </section>
-      
+
       {/* Footer */}
       <footer className="border-t border-border py-12 mt-12 bg-card">
         <div className="container mx-auto px-6 text-center text-muted-foreground">

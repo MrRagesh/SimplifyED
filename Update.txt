@@ -1,0 +1,10 @@
+Project Status: Updated
+Modified Status: AI Service migrated to OpenRouter, Responsiveness Improved, Quiz Generation Fixed, Character-by-character Typewriter Effect Added
+Model: nvidia/nemotron-3-nano-30b-a3b:free
+API: OpenRouter / OpenAI SDK
+Date: 2026-02-18
+AI Response: Character-by-character typing added (Markdown support fixed)
+Quiz Status: Fixed (Switched to non-streaming for stability & added frontend redirection)
+2026-02-18: Typewriter effect robustness improved and streaming lag issues resolved.
+
+

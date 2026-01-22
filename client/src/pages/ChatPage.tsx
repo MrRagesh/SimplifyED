@@ -120,17 +120,17 @@ export default function ChatPage() {
 
   return (
     <Layout>
-      <div className="flex flex-col h-[calc(100vh-6rem)] md:h-[calc(100vh-4rem)] max-w-4xl mx-auto">
+      <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-2rem)] max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6 border-b border-border pb-4">
+        <div className="flex items-center gap-4 mb-4 md:mb-6 border-b border-border pb-4 pt-2">
           <Link href="/">
-            <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted">
+            <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted shrink-0">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <div className="flex-1">
-            <h1 className="font-display font-bold text-xl md:text-2xl truncate">{conversation.title}</h1>
-            <p className="text-sm text-muted-foreground">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display font-bold text-lg md:text-2xl truncate">{conversation.title}</h1>
+            <p className="text-xs md:text-sm text-muted-foreground truncate">
               Started {format(new Date(conversation.createdAt!), "MMM d, yyyy")}
             </p>
           </div>
@@ -138,12 +138,22 @@ export default function ChatPage() {
             variant="outline"
             size="sm"
             onClick={() => setQuizModalOpen(true)}
-            className="rounded-lg flex items-center gap-2 hidden md:flex"
+            className="rounded-lg flex items-center gap-2 hidden md:flex shrink-0"
           >
             <BookOpen className="w-4 h-4" />
             Test Your Knowledge
           </Button>
-          <div className="bg-primary/10 px-3 py-1 rounded-full text-xs font-bold text-primary flex items-center gap-1">
+          {/* Mobile Quiz Button */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setQuizModalOpen(true)}
+            className="rounded-lg md:hidden shrink-0"
+          >
+            <BookOpen className="w-4 h-4" />
+          </Button>
+
+          <div className="bg-primary/10 px-3 py-1 rounded-full text-xs font-bold text-primary flex items-center gap-1 shrink-0 hidden sm:flex">
             <Sparkles className="w-3 h-3" />
             AI Tutor
           </div>
@@ -151,7 +161,7 @@ export default function ChatPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full shrink-0"
             onClick={() => {
               if (confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) {
                 deleteMutation.mutate(conversationId, {
@@ -183,26 +193,26 @@ export default function ChatPage() {
         </div>
 
         {/* Messages Area */}
-        <ScrollArea className="flex-1 pr-4 -mr-4">
-          <div className="space-y-8 pb-4">
+        <ScrollArea className="flex-1 pr-2 md:pr-4 -mr-2 md:-mr-4">
+          <div className="space-y-6 md:space-y-8 pb-4">
             {conversation.messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+                className={`flex gap-3 md:gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
               >
                 <div className={`
-                  flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-sm
+                  flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center shadow-sm
                   ${msg.role === "user" ? "bg-accent text-accent-foreground" : "bg-primary text-primary-foreground"}
                 `}>
-                  {msg.role === "user" ? <User className="w-5 h-5" /> : <GraduationCap className="w-6 h-6" />}
+                  {msg.role === "user" ? <User className="w-4 h-4 md:w-5 md:h-5" /> : <GraduationCap className="w-5 h-5 md:w-6 md:h-6" />}
                 </div>
 
                 <div className={`
-                  flex flex-col max-w-[85%] md:max-w-[75%] group
+                  flex flex-col max-w-[85%] md:max-w-[80%] group
                   ${msg.role === "user" ? "items-end" : "items-start"}
                 `}>
                   <div className={`
-                    relative px-6 py-4 rounded-2xl shadow-sm text-base md:text-lg leading-relaxed
+                    relative px-4 py-3 md:px-6 md:py-4 rounded-2xl shadow-sm text-sm md:text-lg leading-relaxed
                     ${msg.role === "user"
                       ? "bg-accent text-accent-foreground rounded-tr-sm"
                       : "bg-white dark:bg-card border border-border rounded-tl-sm"}
@@ -331,6 +341,7 @@ export default function ChatPage() {
       <QuizModal
         open={quizModalOpen}
         onOpenChange={setQuizModalOpen}
+        onQuizCreated={(quizId) => setLocation(`/quiz/${quizId}`)}
         topic={topicFromTitle}
         context={lastAssistantMessage}
       />
